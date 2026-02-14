@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { PlusCircle, Wallet, Calendar, User, LogOut, ChevronDown, Loader2 } from 'lucide-react';
 
 // 1. YAHAN APNA URL PASTE KAREIN
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSuATOOwiMTSQ87EEgwCkAWxpiOzmlYR8n4G6sxWpwb4YmGpRUEWNZL7OxCBM1VKCN/exec'; 
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7ieQ43220GLN_HfGAJLkHaildrTIewKEeYLGooddim9r1RLg58ISe82DNaV1tWavo/exec'; 
 const BUDGET_LIMIT = 150000;
 
 const App = () => {
