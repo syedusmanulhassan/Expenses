@@ -104,11 +104,10 @@
   </div>
 
   <script>
-    // ⚠️ APNA GOOGLE DEPLOYED WEB APP URL YAHAN PASTE KAREIN
+    // Aapka live deployed URL yahan active kar diya hai
     const API_URL = "https://script.google.com/macros/s/AKfycbybMaPzPFYWj8Y5lLknZWNCHp79WNz5mBVc8YV2rpOdXLz9w32CGSnGKsNYdmLJ1dII/exec"; 
 
-    let rawData = [], monthlyStats = {};"; 
-
+    let rawData = [], monthlyStats = {};
 
     function showLoader(v) { document.getElementById('loader').classList.toggle('hidden', !v); }
 
@@ -130,7 +129,11 @@
             alert(res.message);
           }
         })
-        .catch(err => { showLoader(false); alert("Connection Error!"); });
+        .catch(err => { 
+          showLoader(false); 
+          alert("Login error! Please check configurations."); 
+          console.error(err);
+        });
     }
 
     function fetchData() {
@@ -145,7 +148,6 @@
           const currentVal = monthSelect.value;
           monthSelect.innerHTML = '<option value="Current Month">Current Month</option>';
           
-          // Sheet tabs ko drop down mein sort karke auto-show karna
           const sortedMonths = Object.keys(monthlyStats)
             .filter(m => m !== "Current Month")
             .sort((a, b) => new Date(b) - new Date(a));
@@ -161,7 +163,11 @@
           updateUI();
           showLoader(false);
         })
-        .catch(err => { showLoader(false); console.error(err); });
+        .catch(err => { 
+          showLoader(false); 
+          alert("Data Fetching Error!");
+          console.error(err); 
+        });
     }
 
     function updateUI() {
@@ -243,7 +249,10 @@
           alert("Error saving data");
         }
       })
-      .catch(err => { showLoader(false); alert("Error connecting to server"); });
+      .catch(err => { 
+        showLoader(false); 
+        alert("Error connecting to server while saving!"); 
+      });
     }
 
     window.onload = () => { document.getElementById('date').valueAsDate = new Date(); };
