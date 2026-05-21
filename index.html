@@ -1,27 +1,227 @@
-```html id="pny9k9"
 <!DOCTYPE html>
 <html>
-
 <head>
-
-  <base target="_top">
-
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #f8fafc; font-family: 'Inter', sans-serif; }
+    .card { border-radius: 2rem; transition: all 0.3s ease; }
+    
+    .pulse-active { animation: pulse-green 2s infinite; }
+    @keyframes pulse-green {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+      70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
+      100% { transform: scale(1); }
+    }
 
-  <?!= include('style'); ?>
+    .pulse-danger { animation: pulse-red 1.5s infinite; border: 2px solid #ef4444 !important; }
+    @keyframes pulse-red {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+      100% { transform: scale(1); }
+    }
 
+    .debt-row { background-color: #fff1f2 !important; border-left: 5px solid #e11d48; }
+    
+    /* Auto-Paid Style for Debt */
+    .paid-row { opacity: 0.6; filter: grayscale(0.5); background: #f1f5f9 !important; border-left: 5px solid #22c55e !important; }
+    .paid-badge { background: #22c55e; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-left: 8px; }
+  </style>
 </head>
+<body class="p-4 md:p-8">
 
-<body>
+  <div id="loginPage" class="fixed inset-0 bg-slate-900 z-[100] flex items-center justify-center p-6 text-center">
+    <div class="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
+      <h1 class="text-3xl font-black italic mb-2 text-slate-800">UK <span class="text-indigo-600">WATCH</span></h1>
+      <div class="space-y-4 mt-6">
+        <input type="text" id="uName" placeholder="Username" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none font-bold text-center">
+        <input type="password" id="uPass" placeholder="Password" class="w-full p-4 bg-slate-50 border rounded-2xl outline-none font-bold text-center">
+        <button onclick="attemptLogin()" class="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-xs">Unlock Dashboard</button>
+      </div>
+    </div>
+  </div>
 
-  <!-- AAPKA SARA HTML -->
+  <div id="loader" class="fixed inset-0 bg-white/90 backdrop-blur-sm z-[110] flex flex-col items-center justify-center hidden">
+    <div class="h-12 w-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+    <p class="font-black text-slate-800 text-xs tracking-widest uppercase">Syncing Live Data</p>
+  </div>
+
+  <div id="mainDashboard" class="max-w-6xl mx-auto space-y-6 hidden">
+    <div class="flex justify-between items-center bg-white p-7 rounded-[2.5rem] shadow-sm border border-slate-100">
+      <div><h1 class="text-2xl font-black italic text-slate-800">UK<span class="text-indigo-600">WATCH</span></h1></div>
+      <div class="flex gap-3">
+        <select id="monthFilter" onchange="updateUI()" class="p-3 border rounded-2xl font-bold bg-slate-50 text-sm outline-none cursor-pointer min-w-[180px]">
+          <option value="Current Month">Current Month</option>
+        </select>
+        <button onclick="fetchData()" class="p-4 bg-indigo-600 text-white rounded-2xl shadow-lg hover:scale-110 transition">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div id="walletCard" class="card p-7 bg-white border border-slate-100 shadow-sm">
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Remaining Budget</p>
+        <h2 id="walletVal" class="text-5xl font-black mt-1 text-green-600">Rs. 0</h2>
+      </div>
+      <div class="card p-7 bg-slate-900 text-white shadow-xl">
+        <p class="text-[10px] font-black opacity-40 uppercase tracking-tighter">Total Amount</p>
+        <h2 id="salaryVal" class="text-5xl font-black mt-1 text-indigo-400">Rs. 0</h2>
+      </div>
+      <div id="debtCard" class="card p-7 bg-white border border-slate-100 shadow-sm">
+        <p class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Debt Total</p>
+        <h2 id="debtVal" class="text-5xl font-black mt-1 text-slate-800">Rs. 0</h2>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div class="lg:col-span-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+        <form onsubmit="saveData(event)" id="entryForm" class="space-y-4">
+          <input type="date" id="date" required class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
+          <select id="cat" class="w-full p-4 bg-slate-50 border rounded-2xl font-bold">
+            <option>House Spend</option><option>Bike Fuel</option><option>Medical</option>
+            <option>Fast Food</option><option>Clothes</option><option>Home Decor</option>
+            <option>Fruits</option><option>Bike Maintanence</option><option>Shoes</option>
+            <option>Debt</option><option>Vegetable</option><option>Committee</option>
+            <option>Grocery</option><option>Gift / Eidi/ Marriage Salami</option><option>Others</option>
+          </select>
+          <input type="number" id="amt" placeholder="Amount" required class="w-full p-6 bg-indigo-50 border-2 border-indigo-100 rounded-2xl text-3xl font-black text-indigo-700 outline-none">
+          <input type="text" id="desc" placeholder="Details..." class="w-full p-4 bg-slate-50 border rounded-2xl">
+          <select id="user" class="w-full p-4 bg-slate-800 text-white rounded-2xl font-bold">
+            <option>Usman</option><option>UK</option>
+          </select>
+          <button type="submit" class="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl shadow-xl uppercase text-xs">Submit Entry</button>
+        </form>
+      </div>
+
+      <div class="lg:col-span-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto max-h-[600px]">
+          <table class="w-full text-left">
+            <thead class="bg-slate-50 text-[10px] font-black uppercase text-slate-400 sticky top-0">
+              <tr><th class="p-6">Details</th><th class="p-6 text-right">Value</th><th class="p-6 text-center">Status</th></tr>
+            </thead>
+            <tbody id="tableBody" class="divide-y divide-slate-50"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
+    let rawData = [], monthlyStats = {};
 
-    // AAPKA SARA JAVASCRIPT
+    function showLoader(v) { document.getElementById('loader').classList.toggle('hidden', !v); }
 
+    function attemptLogin() {
+      const user = document.getElementById('uName').value;
+      const pass = document.getElementById('uPass').value;
+      showLoader(true);
+      google.script.run.withSuccessHandler(res => {
+        showLoader(false);
+        if (res.success) {
+          document.getElementById('loginPage').style.display = 'none';
+          document.getElementById('mainDashboard').classList.remove('hidden');
+          document.getElementById('user').value = (user === "UKlove") ? "UK" : "Usman";
+          fetchData();
+        }
+      }).checkLogin(user, pass);
+    }
+
+    function fetchData() {
+      showLoader(true);
+      google.script.run.withSuccessHandler(res => {
+        rawData = res.allData || [];
+        monthlyStats = res.monthlyStats || {};
+        const monthSelect = document.getElementById('monthFilter');
+        const currentVal = monthSelect.value;
+        monthSelect.innerHTML = '<option value="Current Month">Current Month</option>';
+        
+        const sortedMonths = Object.keys(monthlyStats)
+          .filter(m => m !== "Current Month")
+          .sort((a, b) => new Date(b) - new Date(a));
+
+        sortedMonths.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.innerText = m;
+          monthSelect.appendChild(opt);
+        });
+        
+        monthSelect.value = (currentVal && monthlyStats[currentVal]) ? currentVal : "Current Month";
+        updateUI();
+        showLoader(false);
+      }).getFullData();
+    }
+
+    function updateUI() {
+      const selectedTab = document.getElementById('monthFilter').value;
+      const stats = monthlyStats[selectedTab] || { salary: 0, total: 0, debt: 0 };
+      const isPastMonth = selectedTab !== "Current Month";
+
+      const budget = isPastMonth ? 0 : (stats.salary - stats.total);
+      const walletCard = document.getElementById('walletCard');
+      const debtCard = document.getElementById('debtCard');
+
+      walletCard.classList.remove('pulse-active');
+      debtCard.classList.remove('pulse-danger');
+
+      if (isPastMonth && stats.debt > 0) {
+        debtCard.classList.add('pulse-danger');
+      } else if (!isPastMonth) {
+        if (budget < 0) debtCard.classList.add('pulse-danger');
+        else walletCard.classList.add('pulse-active');
+      }
+      
+      let filtered = rawData.filter(i => i.sheetName === selectedTab);
+      filtered.sort((a, b) => (a.cat.toLowerCase() === 'debt' ? -1 : 1));
+      
+      let html = '';
+      filtered.forEach((i, idx) => {
+        const isDebt = i.cat.toLowerCase() === 'debt';
+        // AUTO LOGIC: Agar category "Debt" hai to paid-row class lag jaye
+        const rowClass = isDebt ? 'paid-row' : '';
+        const badgeHtml = isDebt ? '<span class="paid-badge">Paid ✓</span>' : '';
+
+        html += `<tr class="${rowClass} transition-all">
+          <td class="p-6">
+            <div class="flex items-center gap-2">
+              <span class="text-[9px] font-black px-2 py-0.5 rounded-md ${i.by === 'UK' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'} uppercase">${i.by}</span>
+              ${badgeHtml}
+            </div>
+            <p class="font-black text-slate-800 text-base mt-1">${i.cat}</p>
+            <p class="text-[11px] text-slate-500 italic">${i.desc || '...'}</p>
+          </td>
+          <td class="p-6 text-right">
+            <span class="text-xl font-black ${isDebt ? 'text-green-600' : 'text-indigo-600'}">Rs. ${i.amt.toLocaleString()}</span>
+          </td>
+          <td class="p-6 text-center">
+             <div class="text-[10px] font-black uppercase text-slate-400">${isDebt ? 'Settled' : 'Active'}</div>
+          </td>
+        </tr>`;
+      });
+
+      document.getElementById('tableBody').innerHTML = html || '<tr><td colspan="3" class="p-10 text-center text-slate-400 font-bold uppercase text-xs tracking-widest">No Records Found</td></tr>';
+      document.getElementById('salaryVal').innerText = "Rs. " + stats.salary.toLocaleString();
+      document.getElementById('walletVal').innerText = "Rs. " + budget.toLocaleString();
+      document.getElementById('debtVal').innerText = "Rs. " + stats.debt.toLocaleString();
+    }
+
+    function saveData(e) {
+      e.preventDefault();
+      showLoader(true);
+      google.script.run.withSuccessHandler(() => {
+        document.getElementById('entryForm').reset();
+        document.getElementById('date').valueAsDate = new Date();
+        fetchData();
+      }).addExpense({
+        date: document.getElementById('date').value,
+        category: document.getElementById('cat').value,
+        description: document.getElementById('desc').value,
+        amount: document.getElementById('amt').value,
+        addedBy: document.getElementById('user').value
+      });
+    }
+
+    window.onload = () => { document.getElementById('date').valueAsDate = new Date(); };
   </script>
-
 </body>
 </html>
-```
