@@ -102,9 +102,9 @@
       </div>
     </div>
   </div>
+
   <script>
-    // Aapka live deployed URL yahan active kar diya hai
-    const API_URL = "https://script.google.com/macros/s/AKfycbybMaPzPFYWj8Y5lLknZWNCHp79WNz5mBVc8YV2rpOdXLz9w32CGSnGKsNYdmLJ1dII/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbwrjftjQIajjP0gq5KhNWLwAcN9XEesMSRDJsaFc0SRPowitxgBMdxpmRRf0BgtXjkD/exec"; 
 
     let rawData = [], monthlyStats = {};
 
@@ -115,58 +115,62 @@
       const pass = document.getElementById('uPass').value;
       showLoader(true);
 
-      fetch(`${API_URL}?action=checkLogin&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`)
-        .then(res => res.json())
-        .then(res => {
-          showLoader(false);
-          if (res.success) {
-            document.getElementById('loginPage').style.display = 'none';
-            document.getElementById('mainDashboard').classList.remove('hidden');
-            document.getElementById('user').value = (user === "UKlove") ? "UK" : "Usman";
-            fetchData();
-          } else {
-            alert(res.message);
-          }
-        })
-        .catch(err => { 
-          showLoader(false); 
-          alert("Login error! Please check configurations."); 
-          console.error(err);
-        });
+      // Google Redirect ko follow karne ke liye standard fetch setup
+      fetch(`${API_URL}?action=checkLogin&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`, {
+        method: "GET",
+        mode: "cors"
+      })
+      .then(res => res.json())
+      .then(res => {
+        showLoader(false);
+        if (res.success) {
+          document.getElementById('loginPage').style.display = 'none';
+          document.getElementById('mainDashboard').classList.remove('hidden');
+          document.getElementById('user').value = (user === "UKlove") ? "UK" : "Usman";
+          fetchData();
+        } else {
+          alert(res.message);
+        }
+      })
+      .catch(err => { 
+        showLoader(false); 
+        alert("Login connection failed! Refresh and try again."); 
+        console.error(err);
+      });
     }
 
     function fetchData() {
       showLoader(true);
-      fetch(`${API_URL}?action=getFullData`)
-        .then(res => res.json())
-        .then(res => {
-          rawData = res.allData || [];
-          monthlyStats = res.monthlyStats || {};
-          
-          const monthSelect = document.getElementById('monthFilter');
-          const currentVal = monthSelect.value;
-          monthSelect.innerHTML = '<option value="Current Month">Current Month</option>';
-          
-          const sortedMonths = Object.keys(monthlyStats)
-            .filter(m => m !== "Current Month")
-            .sort((a, b) => new Date(b) - new Date(a));
+      fetch(`${API_URL}?action=getFullData`, { method: "GET", mode: "cors" })
+      .then(res => res.json())
+      .then(res => {
+        rawData = res.allData || [];
+        monthlyStats = res.monthlyStats || {};
+        
+        const monthSelect = document.getElementById('monthFilter');
+        const currentVal = monthSelect.value;
+        monthSelect.innerHTML = '<option value="Current Month">Current Month</option>';
+        
+        const sortedMonths = Object.keys(monthlyStats)
+          .filter(m => m !== "Current Month")
+          .sort((a, b) => new Date(b) - new Date(a));
 
-          sortedMonths.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.innerText = m;
-            monthSelect.appendChild(opt);
-          });
-          
-          monthSelect.value = (currentVal && monthlyStats[currentVal]) ? currentVal : "Current Month";
-          updateUI();
-          showLoader(false);
-        })
-        .catch(err => { 
-          showLoader(false); 
-          alert("Data Fetching Error!");
-          console.error(err); 
+        sortedMonths.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.innerText = m;
+          monthSelect.appendChild(opt);
         });
+        
+        monthSelect.value = (currentVal && monthlyStats[currentVal]) ? currentVal : "Current Month";
+        updateUI();
+        showLoader(false);
+      })
+      .catch(err => { 
+        showLoader(false); 
+        alert("Data Fetching Error!");
+        console.error(err); 
+      });
     }
 
     function updateUI() {
