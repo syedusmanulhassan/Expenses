@@ -1,28 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UK WATCH Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background: #f8fafc; font-family: 'Inter', sans-serif; }
     .card { border-radius: 2rem; transition: all 0.3s ease; }
-    
     .pulse-active { animation: pulse-green 2s infinite; }
     @keyframes pulse-green {
       0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
       70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
       100% { transform: scale(1); }
     }
-
     .pulse-danger { animation: pulse-red 1.5s infinite; border: 2px solid #ef4444 !important; }
     @keyframes pulse-red {
       0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
       70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
       100% { transform: scale(1); }
     }
-
-    .debt-row { background-color: #fff1f2 !important; border-left: 5px solid #e11d48; }
-    
-    /* Auto-Paid Style for Debt */
     .paid-row { opacity: 0.6; filter: grayscale(0.5); background: #f1f5f9 !important; border-left: 5px solid #22c55e !important; }
     .paid-badge { background: #22c55e; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-left: 8px; }
   </style>
@@ -64,7 +61,7 @@
         <h2 id="walletVal" class="text-5xl font-black mt-1 text-green-600">Rs. 0</h2>
       </div>
       <div class="card p-7 bg-slate-900 text-white shadow-xl">
-        <p class="text-[10px] font-black opacity-40 uppercase tracking-tighter">Total Amount</p>
+        <p class="text-[10px] font-black opacity-40 uppercase tracking-tighter">Total Amount (Salary)</p>
         <h2 id="salaryVal" class="text-5xl font-black mt-1 text-indigo-400">Rs. 0</h2>
       </div>
       <div id="debtCard" class="card p-7 bg-white border border-slate-100 shadow-sm">
@@ -107,6 +104,9 @@
   </div>
 
   <script>
+    // ⚠️ APNA GOOGLE DEPLOYED WEB APP URL YAHAN PASTE KAREIN
+    const API_URL = "APNA_GOOGLE_WEB_APP_URL_YAHAN_LAGAEIN"; 
+
     let rawData = [], monthlyStats = {};
 
     function showLoader(v) { document.getElementById('loader').classList.toggle('hidden', !v); }
@@ -115,41 +115,52 @@
       const user = document.getElementById('uName').value;
       const pass = document.getElementById('uPass').value;
       showLoader(true);
-      google.script.run.withSuccessHandler(res => {
-        showLoader(false);
-        if (res.success) {
-          document.getElementById('loginPage').style.display = 'none';
-          document.getElementById('mainDashboard').classList.remove('hidden');
-          document.getElementById('user').value = (user === "UKlove") ? "UK" : "Usman";
-          fetchData();
-        }
-      }).checkLogin(user, pass);
+
+      fetch(`${API_URL}?action=checkLogin&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`)
+        .then(res => res.json())
+        .then(res => {
+          showLoader(false);
+          if (res.success) {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('mainDashboard').classList.remove('hidden');
+            document.getElementById('user').value = (user === "UKlove") ? "UK" : "Usman";
+            fetchData();
+          } else {
+            alert(res.message);
+          }
+        })
+        .catch(err => { showLoader(false); alert("Connection Error!"); });
     }
 
     function fetchData() {
       showLoader(true);
-      google.script.run.withSuccessHandler(res => {
-        rawData = res.allData || [];
-        monthlyStats = res.monthlyStats || {};
-        const monthSelect = document.getElementById('monthFilter');
-        const currentVal = monthSelect.value;
-        monthSelect.innerHTML = '<option value="Current Month">Current Month</option>';
-        
-        const sortedMonths = Object.keys(monthlyStats)
-          .filter(m => m !== "Current Month")
-          .sort((a, b) => new Date(b) - new Date(a));
+      fetch(`${API_URL}?action=getFullData`)
+        .then(res => res.json())
+        .then(res => {
+          rawData = res.allData || [];
+          monthlyStats = res.monthlyStats || {};
+          
+          const monthSelect = document.getElementById('monthFilter');
+          const currentVal = monthSelect.value;
+          monthSelect.innerHTML = '<option value="Current Month">Current Month</option>';
+          
+          // Sheet tabs ko drop down mein sort karke auto-show karna
+          const sortedMonths = Object.keys(monthlyStats)
+            .filter(m => m !== "Current Month")
+            .sort((a, b) => new Date(b) - new Date(a));
 
-        sortedMonths.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m;
-          opt.innerText = m;
-          monthSelect.appendChild(opt);
-        });
-        
-        monthSelect.value = (currentVal && monthlyStats[currentVal]) ? currentVal : "Current Month";
-        updateUI();
-        showLoader(false);
-      }).getFullData();
+          sortedMonths.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.innerText = m;
+            monthSelect.appendChild(opt);
+          });
+          
+          monthSelect.value = (currentVal && monthlyStats[currentVal]) ? currentVal : "Current Month";
+          updateUI();
+          showLoader(false);
+        })
+        .catch(err => { showLoader(false); console.error(err); });
     }
 
     function updateUI() {
@@ -175,11 +186,10 @@
       filtered.sort((a, b) => (a.cat.toLowerCase() === 'debt' ? -1 : 1));
       
       let html = '';
-      filtered.forEach((i, idx) => {
+      filtered.forEach((i) => {
         const isDebt = i.cat.toLowerCase() === 'debt';
-        // AUTO LOGIC: Agar category "Debt" hai to paid-row class lag jaye
         const rowClass = isDebt ? 'paid-row' : '';
-        const badgeHtml = isDebt ? '<span class="paid-badge">Paid ✓</span>' : '';
+        const badgeHtml = isDebt ? '<span class="paid-badge">Settled ✓</span>' : '';
 
         html += `<tr class="${rowClass} transition-all">
           <td class="p-6">
@@ -208,17 +218,31 @@
     function saveData(e) {
       e.preventDefault();
       showLoader(true);
-      google.script.run.withSuccessHandler(() => {
-        document.getElementById('entryForm').reset();
-        document.getElementById('date').valueAsDate = new Date();
-        fetchData();
-      }).addExpense({
+
+      const payload = {
         date: document.getElementById('date').value,
         category: document.getElementById('cat').value,
         description: document.getElementById('desc').value,
         amount: document.getElementById('amt').value,
         addedBy: document.getElementById('user').value
-      });
+      };
+
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        if(res.success) {
+          document.getElementById('entryForm').reset();
+          document.getElementById('date').valueAsDate = new Date();
+          fetchData();
+        } else {
+          showLoader(false);
+          alert("Error saving data");
+        }
+      })
+      .catch(err => { showLoader(false); alert("Error connecting to server"); });
     }
 
     window.onload = () => { document.getElementById('date').valueAsDate = new Date(); };
